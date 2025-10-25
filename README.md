@@ -24,7 +24,7 @@ This system manages data from multiple combined temperature and humidity sensors
 ## Technology Stack
 
 - **Java 21**
-- **Spring Boot 3.5.7**
+- **Spring Boot 3.2.5**
 - **Spring Cloud 2023.0.0**
 - **Spring Data JPA**
 - **H2 Database** (development)
