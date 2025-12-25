@@ -35,11 +35,15 @@ timeout /t 10 /nobreak > nul
 
 REM Start Room Sensors Service Instance 1
 echo Starting Room Sensors Service Instance 1...
+cd sensor-service
 start "Room Sensors Service 1" cmd /k "mvn spring-boot:run -Dspring-boot.run.arguments=--server.port=8080"
+cd ..
 
 REM Start Room Sensors Service Instance 2
 echo Starting Room Sensors Service Instance 2...
+cd sensor-service
 start "Room Sensors Service Instance 2" cmd /k "mvn spring-boot:run -Dspring-boot.run.arguments=--server.port=8082"
+cd ..
 
 echo.
 echo ==========================================
