@@ -48,13 +48,13 @@ public class UserController {
         return ResponseEntity.ok(user);
     }
     
-    @PutMapping("/{id}")
+    @PutMapping("/{id}/{role}")
     @Operation(summary = "Update user", description = "Update an existing user")
     @PreAuthorize("hasAuthority('ROLE_READ_WRITE')")
     public ResponseEntity<UserDTO> updateUser(
             @Parameter(description = "User ID") @PathVariable Long id,
-            @Valid @RequestBody UserDTO userDTO) {
-        UserDTO updatedUser = userService.updateUser(id, userDTO);
+            @PathVariable(name = "role") String role) {
+        UserDTO updatedUser = userService.updateUser(id, role);
         return ResponseEntity.ok(updatedUser);
     }
     

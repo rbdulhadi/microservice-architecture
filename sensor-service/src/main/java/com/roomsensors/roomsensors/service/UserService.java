@@ -38,33 +38,18 @@ public class UserService {
         if (userRepository.existsByUsername(userDTO.getUsername())) {
             throw new RuntimeException("Username already exists: " + userDTO.getUsername());
         }
-        if (userRepository.existsByEmail(userDTO.getEmail())) {
-            throw new RuntimeException("Email already exists: " + userDTO.getEmail());
-        }
-        
+
         User user = convertToEntity(userDTO);
         user.setPassword(passwordEncoder.encode(userDTO.getPassword()));
         User savedUser = userRepository.save(user);
         return convertToDTO(savedUser);
     }
     
-    public UserDTO updateUser(Long id, UserDTO userDTO) {
+    public UserDTO updateUser(Long id, String role) {
         User user = userRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
-        
-        if (!user.getUsername().equals(userDTO.getUsername()) && userRepository.existsByUsername(userDTO.getUsername())) {
-            throw new RuntimeException("Username already exists: " + userDTO.getUsername());
-        }
-        if (!user.getEmail().equals(userDTO.getEmail()) && userRepository.existsByEmail(userDTO.getEmail())) {
-            throw new RuntimeException("Email already exists: " + userDTO.getEmail());
-        }
-        
-        user.setUsername(userDTO.getUsername());
-        user.setEmail(userDTO.getEmail());
-        if (userDTO.getPassword() != null && !userDTO.getPassword().isEmpty()) {
-            user.setPassword(passwordEncoder.encode(userDTO.getPassword()));
-        }
-        user.setRole(userDTO.getRole());
+
+        user.setRole(normalizeRole(role));
         
         User updatedUser = userRepository.save(user);
         return convertToDTO(updatedUser);
@@ -86,19 +71,22 @@ public class UserService {
         UserDTO dto = new UserDTO();
         dto.setId(user.getId());
         dto.setUsername(user.getUsername());
-        dto.setEmail(user.getEmail());
-        dto.setPassword(""); // Don't expose password
-        dto.setRole(user.getRole());
         return dto;
     }
     
     private User convertToEntity(UserDTO dto) {
         User user = new User();
         user.setUsername(dto.getUsername());
-        user.setEmail(dto.getEmail());
         user.setPassword(dto.getPassword());
-        user.setRole(dto.getRole());
+        user.setRole(Role.READ_ONLY);
         return user;
+    }
+
+    private Role normalizeRole(String role) {
+        if (role.equalsIgnoreCase("ADMIN")) {
+            return Role.READ_WRITE;
+        }
+        return Role.READ_ONLY;
     }
 }
 

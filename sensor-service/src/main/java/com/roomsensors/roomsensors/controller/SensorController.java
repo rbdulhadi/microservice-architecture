@@ -68,22 +68,5 @@ public class SensorController {
         sensorService.deleteSensor(id);
         return ResponseEntity.noContent().build();
     }
-    
-    @GetMapping("/type/{type}")
-    @Operation(summary = "Get sensors by type", description = "Retrieve sensors filtered by type")
-    @PreAuthorize("hasAuthority('ROLE_READ_ONLY') or hasAuthority('ROLE_READ_WRITE')")
-    public ResponseEntity<List<SensorDTO>> getSensorsByType(
-            @Parameter(description = "Sensor type") @PathVariable SensorType type) {
-        List<SensorDTO> sensors = sensorService.getSensorsByType(type);
-        return ResponseEntity.ok(sensors);
-    }
-    
-    @GetMapping("/active")
-    @Operation(summary = "Get active sensors", description = "Retrieve all active sensors")
-    @PreAuthorize("hasAuthority('ROLE_READ_ONLY') or hasAuthority('ROLE_READ_WRITE')")
-    public ResponseEntity<List<SensorDTO>> getActiveSensors() {
-        List<SensorDTO> sensors = sensorService.getActiveSensors();
-        return ResponseEntity.ok(sensors);
-    }
 }
 

@@ -53,7 +53,7 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/api/users/register", "/swagger-ui/**", "/v3/api-docs/**", "/api-docs/**", "/h2-console/**").permitAll()
+                .requestMatchers("/api/auth/**", "/api/users/register", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/api-docs/**", "/webjars/**", "/h2-console/**").permitAll()
                 .requestMatchers("/api/sensors/**", "/api/measurements/**").hasAnyAuthority("ROLE_READ_ONLY", "ROLE_READ_WRITE")
                 .requestMatchers("/api/users/**").hasAuthority("ROLE_READ_WRITE")
                 .anyRequest().authenticated()

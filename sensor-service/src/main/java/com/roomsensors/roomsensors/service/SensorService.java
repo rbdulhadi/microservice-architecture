@@ -56,18 +56,6 @@ public class SensorService {
         sensorRepository.deleteById(id);
     }
     
-    public List<SensorDTO> getSensorsByType(SensorType type) {
-        return sensorRepository.findByType(type).stream()
-            .map(this::convertToDTO)
-            .collect(Collectors.toList());
-    }
-    
-    public List<SensorDTO> getActiveSensors() {
-        return sensorRepository.findByActive(true).stream()
-            .map(this::convertToDTO)
-            .collect(Collectors.toList());
-    }
-    
     private SensorDTO convertToDTO(Sensor sensor) {
         SensorDTO dto = new SensorDTO();
         dto.setId(sensor.getId());

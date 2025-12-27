@@ -12,6 +12,5 @@ import java.util.Optional;
 public interface SensorRepository extends JpaRepository<Sensor, Long> {
     List<Sensor> findByActive(Boolean active);
     List<Sensor> findByType(SensorType type);
-    List<Sensor> findByActiveAndType(Boolean active, SensorType type);
 }
 
