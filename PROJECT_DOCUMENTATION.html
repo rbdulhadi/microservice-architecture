@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Room Sensors Microservice System - Technical Documentation</title>
+    <style>
+        @media print {
+            body { margin: 0; }
+            .page-break { page-break-before: always; }
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #34495e;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 5px;
+            margin-top: 30px;
+        }
+        h3 {
+            color: #555;
+            margin-top: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #3498db;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 0.9em;
+        }
+        .diagram {
+            background-color: #f8f9fa;
+            border: 2px solid #dee2e6;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .screenshot-placeholder {
+            background-color: #e9ecef;
+            border: 2px dashed #adb5bd;
+            padding: 40px;
+            margin: 20px 0;
+            text-align: center;
+            color: #6c757d;
+            border-radius: 5px;
+        }
+        .info-box {
+            background-color: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .warning-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        ul, ol {
+            margin: 10px 0;
+            padding-left: 30px;
+        }
+        li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Room Sensors Microservice System - Technical Documentation</h1>
+    
+    <div class="info-box">
+        <strong>Project:</strong> Room Sensors Microservice Architecture<br>
+        <strong>Technology Stack:</strong> Java 21, Spring Boot 3.2.5, Spring Cloud 2023.0.0<br>
+        <strong>Date:</strong> 2024
+    </div>
+
+    <div class="page-break"></div>
+    <h2>1. Entity-Relationship Diagram</h2>
+    
+    <h3>Database Schema</h3>
+    <p>The database consists of three main entities with the following relationships:</p>
+    
+    <div class="diagram">
+        <h3>Entity-Relationship Diagram</h3>
+        <pre style="background-color: white; color: black; text-align: left;">
+┌─────────────────┐
+│     USERS       │
+├─────────────────┤
+│ PK id (Long)    │
+│    username     │ (UNIQUE)
+│    password     │
+│    role         │ (ENUM: READ_ONLY, READ_WRITE)
+└─────────────────┘
+
+┌─────────────────┐
+│    SENSORS      │
+├─────────────────┤
+│ PK id (Long)    │
+│    name         │
+│    location     │
+│    active       │ (Boolean)
+│    type         │ (ENUM: INDOOR, OUTDOOR, WATER)
+└─────────────────┘
+         │
+         │ 1:N
+         │
+         ▼
+┌─────────────────┐
+│  MEASUREMENTS   │
+├─────────────────┤
+│ PK id (Long)    │
+│ FK sensor_id    │ ────┐
+│    timestamp    │     │
+│    temperature  │     │ References
+│    humidity     │     │ SENSORS.id
+│    created_at   │     │
+└─────────────────┘     │
+                        │
+                        └───┘
+        </pre>
+    </div>
+
+    <h3>Entity Descriptions</h3>
+    <table>
+        <tr>
+            <th>Entity</th>
+            <th>Description</th>
+            <th>Key Attributes</th>
+        </tr>
+        <tr>
+            <td><strong>users</strong></td>
+            <td>Stores user accounts for authentication and authorization</td>
+            <td>id, username (unique), password (encrypted), role</td>
+        </tr>
+        <tr>
+            <td><strong>sensors</strong></td>
+            <td>Represents physical sensor devices</td>
+            <td>id, name, location, active status, type</td>
+        </tr>
+        <tr>
+            <td><strong>measurements</strong></td>
+            <td>Stores sensor readings (temperature and humidity)</td>
+            <td>id, sensor_id (FK), timestamp, temperature, humidity</td>
+        </tr>
+    </table>
+
+    <h3>Relationships</h3>
+    <ul>
+        <li><strong>Sensors → Measurements:</strong> One-to-Many relationship. One sensor can have multiple measurements.</li>
+        <li><strong>Foreign Key Constraint:</strong> <code>measurements.sensor_id</code> references <code>sensors.id</code></li>
+        <li><strong>Cascade Behavior:</strong> <strong>Not configured</strong> - Measurements are NOT automatically deleted when their associated sensor is deleted. Sensors with existing measurements cannot be deleted due to foreign key constraints.</li>
+    </ul>
+
+    <div class="page-break"></div>
+    <h2>2. Architecture Diagram</h2>
+    
+    <div class="diagram">
+        <h3>System Architecture Overview</h3>
+        <pre style="background-color: white; color: black; text-align: left;">
+┌─────────────────────────────────────────────────────────────────────┐
+│                         CLIENT / BROWSER                            │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+                               │ HTTP Requests
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                         API GATEWAY                                 │
+│                    http://localhost:8081                            │
+│   ┌──────────────────────────────────────────────────────────────┐  │
+│   │  Spring Cloud Gateway                                        │  │
+│   │  - Route: /api/** → room-sensors-service                     │  │
+│   │  - Route: /v3/api-docs/** → room-sensors-service             │  │
+│   │  - Route: /swagger-ui/** → room-sensors-service              │  │
+│   │  - Load Balancing (Round-Robin)                              │  │
+│   └──────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+                               │ Service Discovery
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                      EUREKA SERVER                                  │
+│                   http://localhost:8761                             │
+│   ┌──────────────────────────────────────────────────────────────┐  │
+│   │  Service Registry & Discovery                                │  │
+│   │  - Registers all microservices                               │  │
+│   │  - Health monitoring                                         │  │
+│   │  - Load balancing coordination                               │  │
+│   └──────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+                    ┌──────────┴──────────┐
+                    │                     │
+                    ▼                     ▼
+┌──────────────────────────┐  ┌───────────────────────────┐
+│   SENSOR SERVICE         │  │   CONFIG SERVER           │
+│   http://localhost:8080  │  │   (Optional)              │
+│  ┌────────────────────┐  │  │  ┌────────────────────┐   │
+│  │ REST Controllers   │  │  │  │ Centralized Config │   │
+│  │ - AuthController   │  │  │  │ Management         │   │
+│  │ - SensorController │  │  │  └────────────────────┘   │
+│  │ - MeasurementCtrl  │  │  │                           │
+│  │ - UserController   │  │  │                           │
+│  └────────────────────┘  │  │                           │
+│  ┌────────────────────┐  │  │                           │
+│  │ Business Logic     │  │  │                           │
+│  │ - AuthService      │  │  │                           │
+│  │ - SensorService    │  │  │                           │
+│  │ - MeasurementSvc   │  │  │                           │
+│  │ - UserService      │  │  │                           │
+│  │ - JwtService       │  │  │                           │
+│  └────────────────────┘  │  │                           │
+│  ┌────────────────────┐  │  │                           │
+│  │ Data Access Layer  │  │  │                           │
+│  │ - Repositories     │  │  │                           │
+│  └────────────────────┘  │  │                           │
+└───────────┬──────────────┘  └───────────────────────────┘
+            │
+            │ JPA/Hibernate
+            ▼
+┌──────────────────────────┐
+│      H2 DATABASE         │
+│  jdbc:h2:file:/data/demo │
+│  ┌────────────────────┐  │
+│  │ Tables:            │  │
+│  │ - users            │  │
+│  │ - sensors          │  │
+│  │ - measurements     │  │
+│  └────────────────────┘  │
+└──────────────────────────┘
+        </pre>
+    </div>
+
+    <h3>Component Details</h3>
+    <table>
+        <tr>
+            <th>Component</th>
+            <th>Port</th>
+            <th>IP Address</th>
+            <th>Description</th>
+        </tr>
+        <tr>
+            <td><strong>API Gateway</strong></td>
+            <td>8081</td>
+            <td>localhost / 127.0.0.1</td>
+            <td>Single entry point for all client requests. Routes to appropriate microservices.</td>
+        </tr>
+        <tr>
+            <td><strong>Eureka Server</strong></td>
+            <td>8761</td>
+            <td>localhost / 127.0.0.1</td>
+            <td>Service registry and discovery server. Monitors health of registered services.</td>
+        </tr>
+        <tr>
+            <td><strong>Sensor Service</strong></td>
+            <td>8080</td>
+            <td>localhost / 127.0.0.1</td>
+            <td>Main business service handling sensors, measurements, users, and authentication.</td>
+        </tr>
+        <tr>
+            <td><strong>Config Server</strong></td>
+            <td>Configurable</td>
+            <td>localhost / 127.0.0.1</td>
+            <td>Centralized configuration management (optional component).</td>
+        </tr>
+        <tr>
+            <td><strong>H2 Database</strong></td>
+            <td>Embedded</td>
+            <td>File System</td>
+            <td>File-based database for development. Located at /data/demo</td>
+        </tr>
+    </table>
+
+    <h3>Request Flow</h3>
+    <ol>
+        <li>Client sends HTTP request to API Gateway (port 8081)</li>
+        <li>API Gateway queries Eureka Server for available service instances</li>
+        <li>Eureka Server returns registered service instances</li>
+        <li>API Gateway routes request to appropriate service instance (load balanced)</li>
+        <li>Service processes request, interacts with database if needed</li>
+        <li>Response is sent back through API Gateway to client</li>
+    </ol>
+
+    <div class="page-break"></div>
+    <h2>3. Technical Description</h2>
+
+    <h3>3.1 Architecture Overview</h3>
+    <p>This project implements a microservice architecture pattern using Spring Cloud technologies. The system is designed to be scalable, maintainable, and follows best practices for distributed systems.</p>
+
+    <h3>3.2 Design Decisions</h3>
+    
+    <h4>3.2.1 Microservice Architecture</h4>
+    <ul>
+        <li><strong>Decision:</strong> Implemented a microservice architecture instead of a monolithic application</li>
+        <li><strong>Rationale:</strong> 
+            <ul>
+                <li>Better scalability - each service can be scaled independently</li>
+                <li>Technology flexibility - different services can use different technologies if needed</li>
+                <li>Fault isolation - failure in one service doesn't bring down the entire system</li>
+                <li>Team autonomy - different teams can work on different services</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h4>3.2.2 Service Discovery with Eureka</h4>
+    <ul>
+        <li><strong>Decision:</strong> Used Netflix Eureka for service discovery</li>
+        <li><strong>Rationale:</strong>
+            <ul>
+                <li>Automatic service registration and discovery</li>
+                <li>Health monitoring and automatic removal of unhealthy instances</li>
+                <li>Load balancing across multiple service instances</li>
+                <li>Well-integrated with Spring Cloud ecosystem</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h4>3.2.3 API Gateway Pattern</h4>
+    <ul>
+        <li><strong>Decision:</strong> Implemented Spring Cloud Gateway as a single entry point</li>
+        <li><strong>Rationale:</strong>
+            <ul>
+                <li>Centralized routing and load balancing</li>
+                <li>Single point of entry simplifies client interactions</li>
+                <li>Can implement cross-cutting concerns (logging, security) at gateway level</li>
+                <li>Aggregates Swagger UI from multiple services</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h4>3.2.4 JWT-Based Authentication</h4>
+    <ul>
+        <li><strong>Decision:</strong> Implemented JWT (JSON Web Tokens) for authentication</li>
+        <li><strong>Rationale:</strong>
+            <ul>
+                <li>Stateless authentication - no server-side session storage needed</li>
+                <li>Scalable - works well in distributed systems</li>
+                <li>Self-contained - token includes user information and role</li>
+                <li>Industry standard for RESTful APIs</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h4>3.2.5 Role-Based Access Control (RBAC)</h4>
+    <ul>
+        <li><strong>Decision:</strong> Implemented two roles: READ_ONLY and READ_WRITE</li>
+        <li><strong>Rationale:</strong>
+            <ul>
+                <li>Simple yet effective permission model</li>
+                <li>READ_ONLY users can view data without modification rights</li>
+                <li>READ_WRITE users have full access including user management</li>
+                <li>Easy to extend with additional roles if needed</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h4>3.2.6 H2 Database for Development</h4>
+    <ul>
+        <li><strong>Decision:</strong> Used H2 file-based database for development</li>
+        <li><strong>Rationale:</strong>
+            <ul>
+                <li>No external database setup required</li>
+                <li>Fast development and testing</li>
+                <li>Easy to reset and manage</li>
+                <li>Can easily switch to PostgreSQL for production</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h4>3.2.7 Spring Data JPA</h4>
+    <ul>
+        <li><strong>Decision:</strong> Used Spring Data JPA for data persistence</li>
+        <li><strong>Rationale:</strong>
+            <ul>
+                <li>Reduces boilerplate code significantly</li>
+                <li>Automatic query generation from method names</li>
+                <li>Easy to implement custom queries when needed</li>
+                <li>Well-integrated with Spring Boot</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h4>3.2.8 OpenAPI/Swagger Documentation</h4>
+    <ul>
+        <li><strong>Decision:</strong> Integrated SpringDoc OpenAPI for API documentation</li>
+        <li><strong>Rationale:</strong>
+            <ul>
+                <li>Automatic API documentation generation</li>
+                <li>Interactive testing interface (Swagger UI)</li>
+                <li>Standard OpenAPI 3.0 specification</li>
+                <li>Improves developer experience and API discoverability</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h3>3.3 Technology Stack</h3>
+    <table>
+        <tr>
+            <th>Technology</th>
+            <th>Version</th>
+            <th>Purpose</th>
+        </tr>
+        <tr>
+            <td>Java</td>
+            <td>21</td>
+            <td>Programming language</td>
+        </tr>
+        <tr>
+            <td>Spring Boot</td>
+            <td>3.2.5</td>
+            <td>Application framework</td>
+        </tr>
+        <tr>
+            <td>Spring Cloud</td>
+            <td>2023.0.0</td>
+            <td>Microservices framework</td>
+        </tr>
+        <tr>
+            <td>Spring Cloud Gateway</td>
+            <td>Latest</td>
+            <td>API Gateway implementation</td>
+        </tr>
+        <tr>
+            <td>Netflix Eureka</td>
+            <td>Latest</td>
+            <td>Service discovery</td>
+        </tr>
+        <tr>
+            <td>Spring Security</td>
+            <td>Latest</td>
+            <td>Authentication and authorization</td>
+        </tr>
+        <tr>
+            <td>JJWT</td>
+            <td>0.11.5</td>
+            <td>JWT token handling</td>
+        </tr>
+        <tr>
+            <td>Spring Data JPA</td>
+            <td>Latest</td>
+            <td>Data persistence</td>
+        </tr>
+        <tr>
+            <td>H2 Database</td>
+            <td>Latest</td>
+            <td>Development database</td>
+        </tr>
+        <tr>
+            <td>SpringDoc OpenAPI</td>
+            <td>2.2.0</td>
+            <td>API documentation</td>
+        </tr>
+        <tr>
+            <td>Maven</td>
+            <td>3.6+</td>
+            <td>Build and dependency management</td>
+        </tr>
+    </table>
+
+    <h3>3.4 Pitfalls and Surprises</h3>
+
+    <h4>3.4.1 Swagger UI Configuration Issues</h4>
+    <div class="warning-box">
+        <strong>Issue:</strong> Swagger UI showed "No operations defined" when accessed through the API Gateway.<br>
+        <strong>Root Cause:</strong> The gateway's Swagger UI was trying to use its own API docs (which were empty) instead of proxying to the sensor-service API docs.<br>
+        <strong>Solution:</strong> 
+        <ul>
+            <li>Configured gateway routes to proxy Swagger UI requests to sensor-service</li>
+            <li>Set up proper routing for /v3/api-docs, /swagger-ui/**, and /webjars/** paths</li>
+            <li>Updated security configuration to allow Swagger endpoints</li>
+        </ul>
+    </div>
+
+    <h4>3.4.2 Spring Cloud Gateway Property Path Issues</h4>
+    <div class="warning-box">
+        <strong>Issue:</strong> Gateway routes were not working due to incorrect property paths.<br>
+        <strong>Root Cause:</strong> Used incorrect property path format: <code>spring.cloud.gateway.server.webflux.*</code> instead of <code>spring.cloud.gateway.*</code><br>
+        <strong>Solution:</strong> Corrected all gateway route configurations to use the proper property paths.
+    </div>
+
+    <h4>3.4.3 Service Registration Timing</h4>
+    <div class="warning-box">
+        <strong>Issue:</strong> Services sometimes failed to register with Eureka immediately after startup.<br>
+        <strong>Root Cause:</strong> Services were starting before Eureka Server was fully ready.<br>
+        <strong>Solution:</strong> Implemented proper startup order: Eureka Server → Config Server → API Gateway → Sensor Service. Added wait time between service starts.
+    </div>
+
+    <h4>3.4.4 JWT Token Validation</h4>
+    <div class="warning-box">
+        <strong>Issue:</strong> JWT tokens were sometimes not properly validated, causing authentication failures.<br>
+        <strong>Root Cause:</strong> Token expiration checking and username validation needed proper synchronization.<br>
+        <strong>Solution:</strong> Implemented comprehensive token validation in JwtService with proper error handling.
+    </div>
+
+    <h4>3.4.5 Database File Permissions</h4>
+    <div class="warning-box">
+        <strong>Issue:</strong> H2 database file creation failed on some systems.<br>
+        <strong>Root Cause:</strong> Insufficient write permissions for /data/demo directory.<br>
+        <strong>Solution:</strong> Ensured proper directory permissions and provided clear documentation for database setup.
+    </div>
+
+    <h3>3.5 Used Resources</h3>
+
+    <h4>3.5.1 Official Documentation</h4>
+    <ul>
+        <li>Spring Boot Official Documentation: https://spring.io/projects/spring-boot</li>
+        <li>Spring Cloud Documentation: https://spring.io/projects/spring-cloud</li>
+        <li>Spring Cloud Gateway Reference: https://docs.spring.io/spring-cloud-gateway/docs/current/reference/html/</li>
+        <li>Netflix Eureka Documentation: https://github.com/Netflix/eureka</li>
+        <li>Spring Security Reference: https://docs.spring.io/spring-security/reference/</li>
+        <li>SpringDoc OpenAPI Documentation: https://springdoc.org/</li>
+    </ul>
+
+    <h4>3.5.2 Tutorials and Guides</h4>
+    <ul>
+        <li>Spring Cloud Microservices Tutorial - Baeldung</li>
+        <li>Building Microservices with Spring Boot - Spring Academy</li>
+        <li>JWT Authentication with Spring Boot - Various online tutorials</li>
+        <li>Spring Cloud Gateway Tutorial - JavaTpoint</li>
+        <li>Service Discovery with Eureka - Spring Guides</li>
+    </ul>
+
+    <div class="page-break"></div>
+    <h2>4. API Test Calls (cURL Commands)</h2>
+
+    <p>All API endpoints can be tested using cURL commands. The base URL for the API Gateway is <code>http://localhost:8081</code>.</p>
+
+    <h3>4.1 Authentication Endpoints</h3>
+
+    <h4>4.1.1 Register User</h4>
+    <pre>curl -X POST http://localhost:8081/api/users/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin",
+    "password": "password123"
+  }'</pre>
+
+    <h4>4.1.2 Login</h4>
+    <pre>curl -X POST http://localhost:8081/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin",
+    "password": "password123"
+  }'</pre>
+    <p><strong>Expected Response:</strong> JSON with token, username, and role</p>
+    <p><strong>Note:</strong> Save the token from the response for subsequent requests. Replace <code>{TOKEN}</code> in the following commands with the actual token.</p>
+
+    <h3>4.2 User Management Endpoints</h3>
+
+    <h4>4.2.1 Get All Users</h4>
+    <pre>curl -X GET http://localhost:8081/api/users \
+  -H "Authorization: Bearer {TOKEN}"</pre>
+
+    <h4>4.2.2 Get User by ID</h4>
+    <pre>curl -X GET http://localhost:8081/api/users/1 \
+  -H "Authorization: Bearer {TOKEN}"</pre>
+
+    <h4>4.2.3 Update User Role</h4>
+    <pre>curl -X PUT http://localhost:8081/api/users/1/ADMIN \
+  -H "Authorization: Bearer {TOKEN}"</pre>
+
+    <h4>4.2.4 Delete User</h4>
+    <pre>curl -X DELETE http://localhost:8081/api/users/1 \
+  -H "Authorization: Bearer {TOKEN}"</pre>
+
+    <h3>4.3 Sensor Management Endpoints</h3>
+
+    <h4>4.3.1 Get All Sensors</h4>
+    <pre>curl -X GET http://localhost:8081/api/sensors \
+  -H "Authorization: Bearer {TOKEN}"</pre>
+
+    <h4>4.3.2 Get Sensor by ID</h4>
+    <pre>curl -X GET http://localhost:8081/api/sensors/1 \
+  -H "Authorization: Bearer {TOKEN}"</pre>
+
+    <h4>4.3.3 Create Sensor</h4>
+    <pre>curl -X POST http://localhost:8081/api/sensors \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer {TOKEN}" \
+  -d '{
+    "name": "Living Room Sensor",
+    "location": "Living Room",
+    "active": true,
+    "type": "INDOOR"
+  }'</pre>
+
+    <h4>4.3.4 Update Sensor</h4>
+    <pre>curl -X PUT http://localhost:8081/api/sensors/1 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer {TOKEN}" \
+  -d '{
+    "name": "Updated Sensor Name",
+    "location": "Updated Location",
+    "active": false,
+    "type": "OUTDOOR"
+  }'</pre>
+
+    <h4>4.3.5 Delete Sensor</h4>
+    <pre>curl -X DELETE http://localhost:8081/api/sensors/1 \
+  -H "Authorization: Bearer {TOKEN}"</pre>
+
+    <h3>4.4 Measurement Endpoints</h3>
+
+    <h4>4.4.1 Get All Measurements</h4>
+    <pre>curl -X GET http://localhost:8081/api/measurements \
+  -H "Authorization: Bearer {TOKEN}"</pre>
+
+    <h4>4.4.2 Get Measurement by ID</h4>
+    <pre>curl -X GET http://localhost:8081/api/measurements/1 \
+  -H "Authorization: Bearer {TOKEN}"</pre>
+
+    <h4>4.4.3 Create Measurement</h4>
+    <pre>curl -X POST http://localhost:8081/api/measurements \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer {TOKEN}" \
+  -d '{
+    "sensorId": 1,
+    "timestamp": "2024-01-15T10:30:00",
+    "temperature": 22.5,
+    "humidity": 45.2
+  }'</pre>
+
+    <h4>4.4.4 Get Measurements by Sensor</h4>
+    <pre>curl -X GET http://localhost:8081/api/measurements/sensor/1 \
+  -H "Authorization: Bearer {TOKEN}"</pre>
+
+    <h4>4.4.5 Delete Measurement</h4>
+    <pre>curl -X DELETE http://localhost:8081/api/measurements/1 \
+  -H "Authorization: Bearer {TOKEN}"</pre>
+
+    <h3>4.5 Complete Test Sequence Example</h3>
+    <p>The following is a complete sequence to test the entire system:</p>
+    <pre># 1. Register a new user
+curl -X POST http://localhost:8081/api/users/register \
+  -H "Content-Type: application/json" \
+  -d '{"username": "testuser", "password": "testpass123"}'
+
+# 2. Login and get token (save the token from response)
+TOKEN=$(curl -s -X POST http://localhost:8081/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "testuser", "password": "testpass123"}' \
+  | grep -o '"token":"[^"]*' | cut -d'"' -f4)
+
+# 3. Create a sensor
+curl -X POST http://localhost:8081/api/sensors \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"name": "Test Sensor", "location": "Test Room", "active": true, "type": "INDOOR"}'
+
+# 4. Get all sensors
+curl -X GET http://localhost:8081/api/sensors \
+  -H "Authorization: Bearer $TOKEN"
+
+# 5. Create a measurement (replace 1 with actual sensor ID from step 3)
+curl -X POST http://localhost:8081/api/measurements \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"sensorId": 1, "timestamp": "2024-01-15T10:30:00", "temperature": 22.5, "humidity": 45.2}'
+
+# 6. Get all measurements
+curl -X GET http://localhost:8081/api/measurements \
+  -H "Authorization: Bearer $TOKEN"</pre>
+
+    <div class="page-break"></div>
+    <h2>5. Screenshots Demonstrating Working Setup</h2>
+
+    <h3>5.1 Eureka Server Dashboard</h3>
+    <div class="screenshot-placeholder">
+        <strong>[SCREENSHOT PLACEHOLDER]</strong><br>
+        Screenshot of Eureka Server Dashboard at http://localhost:8761<br>
+        Should show registered services: api-gateway, room-sensors-service<br>
+        <em>Instructions: Take a screenshot of the Eureka dashboard showing registered services</em>
+    </div>
+
+    <h3>5.2 Swagger UI - API Documentation</h3>
+    <div class="screenshot-placeholder">
+        <strong>[SCREENSHOT PLACEHOLDER]</strong><br>
+        Screenshot of Swagger UI at http://localhost:8081/swagger-ui.html<br>
+        Should show all API endpoints organized by tags (Authentication, User Management, Sensor Management, Measurement Management)<br>
+        <em>Instructions: Take a screenshot of Swagger UI showing the API endpoints</em>
+    </div>
+
+    <h3>5.3 API Gateway - Service Routes</h3>
+    <div class="screenshot-placeholder">
+        <strong>[SCREENSHOT PLACEHOLDER]</strong><br>
+        Screenshot showing successful API call through the gateway<br>
+        Example: GET request to /api/sensors showing JSON response<br>
+        <em>Instructions: Take a screenshot of a successful API response in Postman, curl output, or browser</em>
+    </div>
+
+    <h3>5.4 Authentication Flow</h3>
+    <div class="screenshot-placeholder">
+        <strong>[SCREENSHOT PLACEHOLDER]</strong><br>
+        Screenshot showing login request and response with JWT token<br>
+        Should show POST /api/auth/login request and response containing token<br>
+        <em>Instructions: Take a screenshot of the login API call showing the token in the response</em>
+    </div>
+
+    <h3>5.5 Database Schema (H2 Console)</h3>
+    <div class="screenshot-placeholder">
+        <strong>[SCREENSHOT PLACEHOLDER]</strong><br>
+        Screenshot of H2 Console at http://localhost:8080/h2-console<br>
+        Should show database tables: USERS, SENSORS, MEASUREMENTS<br>
+        <em>Instructions: Take a screenshot of H2 console showing the database schema or a sample query result</em>
+    </div>
+
+    <h3>5.6 Service Health Monitoring</h3>
+    <div class="screenshot-placeholder">
+        <strong>[SCREENSHOT PLACEHOLDER]</strong><br>
+        Screenshot of Actuator health endpoint at http://localhost:8080/actuator/health<br>
+        Should show service health status<br>
+        <em>Instructions: Take a screenshot of the health endpoint response</em>
+    </div>
+
+    <h3>5.7 Load Balancing Demonstration</h3>
+    <div class="screenshot-placeholder">
+        <strong>[SCREENSHOT PLACEHOLDER]</strong><br>
+        Screenshot showing multiple service instances in Eureka<br>
+        Or logs showing requests being distributed across instances<br>
+        <em>Instructions: Take a screenshot showing load balancing in action (multiple instances or request distribution)</em>
+    </div>
+
+    <div class="page-break"></div>
+    <h2>6. Additional Information</h2>
+
+    <h3>6.1 Service Startup Order</h3>
+    <ol>
+        <li>Eureka Server (port 8761) - Must start first</li>
+        <li>Config Server (if used) - Optional</li>
+        <li>API Gateway (port 8081) - Depends on Eureka</li>
+        <li>Sensor Service (port 8080) - Depends on Eureka</li>
+    </ol>
+
+    <h3>6.2 Default Credentials</h3>
+    <table>
+        <tr>
+            <th>Service</th>
+            <th>Default Access</th>
+        </tr>
+        <tr>
+            <td>H2 Database Console</td>
+            <td>URL: jdbc:h2:file:/data/demo<br>Username: sa<br>Password: (empty)</td>
+        </tr>
+        <tr>
+            <td>Eureka Dashboard</td>
+            <td>No authentication required</td>
+        </tr>
+        <tr>
+            <td>API Endpoints</td>
+            <td>JWT token required (obtain via /api/auth/login)</td>
+        </tr>
+    </table>
+
+    <h3>6.3 Common Ports</h3>
+    <table>
+        <tr>
+            <th>Service</th>
+            <th>Port</th>
+        </tr>
+        <tr>
+            <td>Eureka Server</td>
+            <td>8761</td>
+        </tr>
+        <tr>
+            <td>API Gateway</td>
+            <td>8081</td>
+        </tr>
+        <tr>
+            <td>Sensor Service</td>
+            <td>8080 (default)</td>
+        </tr>
+        <tr>
+            <td>H2 Console</td>
+            <td>8080 (same as sensor service)</td>
+        </tr>
+    </table>
+
+    <div class="info-box">
+        <strong>Note:</strong> This document can be converted to PDF by opening it in a web browser and using the Print function (Ctrl+P) and selecting "Save as PDF" as the destination.
+    </div>
+
+    <hr>
+    <p style="text-align: center; color: #7f8c8d; margin-top: 40px;">
+        <em>Room Sensors Microservice System - Technical Documentation<br>
+        Generated: 2024</em>
+    </p>
+</body>
+</html>
+
